@@ -62,16 +62,16 @@ md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
   return defaultLinkOpen(tokens, idx, options, env, self);
 };
 
-// Tutorials live at dist/{lang}/{tag}/<slug>.html, screens at
+// Tutorials live at dist/{lang}/{tag}/<slug>/index.html, screens at
 // dist/screens/<source>/. Markdown writes `../screens/foo.png` (portable
-// within a source repo); rewrite to `../../screens/<source>/foo.png`.
+// within a source repo); rewrite to `../../../screens/<source>/foo.png`.
 const defaultImage =
   md.renderer.rules.image ||
   ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
 md.renderer.rules.image = (tokens, idx, options, env, self) => {
   const src = tokens[idx].attrGet("src") ?? "";
   if (src.startsWith("../screens/") && env?.source) {
-    tokens[idx].attrSet("src", `../../screens/${env.source}/` + src.slice("../screens/".length));
+    tokens[idx].attrSet("src", `../../../screens/${env.source}/` + src.slice("../screens/".length));
   }
   return defaultImage(tokens, idx, options, env, self);
 };
@@ -162,9 +162,9 @@ const renderTagFilter = (lang, currentTag, prefix) => {
   const tagsTitle = LANGS[lang].tagsTitle;
   const tags = Object.keys(TAGS);
   const items = [
-    { href: `${prefix}index.html`, text: LANGS[lang].allLabel, active: currentTag === null },
+    { href: prefix || "./", text: LANGS[lang].allLabel, active: currentTag === null },
     ...tags.map((t) => ({
-      href: `${prefix}${t}/index.html`,
+      href: `${prefix}${t}/`,
       text: tagLabel(lang, t),
       active: currentTag === t,
     })),
@@ -204,8 +204,8 @@ const renderTutorial = (lang, slug, tag, parsed) => {
   const ol = otherLang(lang);
   const { tocButton, aside } = renderToc(parsed.tocItems, LANGS[lang].tocTitle);
   const breadcrumb = renderBreadcrumb([
-    { text: LANGS[lang].siteTitle, href: "../index.html" },
-    tag && { text: tagLabel(lang, tag), href: "index.html" },
+    { text: LANGS[lang].siteTitle, href: "../../" },
+    tag && { text: tagLabel(lang, tag), href: "../" },
     { text: parsed.title },
   ].filter(Boolean));
   const html = fillTemplate({
@@ -213,15 +213,15 @@ const renderTutorial = (lang, slug, tag, parsed) => {
     bodyClass: "page-tutorial",
     title: parsed.title,
     breadcrumb,
-    cssUrl: "../../site.css",
+    cssUrl: "../../../site.css",
     otherLang: ol,
     otherLangLabel: LANGS[lang].switcherLabel,
-    otherLangUrl: `../../${ol}/${tag}/${slug}.html`,
+    otherLangUrl: `../../../${ol}/${tag}/${slug}/`,
     tocButton,
     aside,
     content: parsed.html,
   });
-  const out = resolve(dist, lang, tag, `${slug}.html`);
+  const out = resolve(dist, lang, tag, slug, "index.html");
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, html);
 };
@@ -233,7 +233,7 @@ const cardsHtml = (items, prefix) =>
   items
     .map(
       ({ slug, title, summary, tag }) => `
-      <a class="tutorial-card" href="${prefix === "" ? `${tag}/` : ""}${slug}.html">
+      <a class="tutorial-card" href="${prefix === "" ? `${tag}/` : ""}${slug}/">
         <h2>${escapeHtml(title)}</h2>
         <p>${escapeHtml(summary)}</p>
       </a>`,
@@ -248,7 +248,7 @@ const renderTagsListing = (lang, items, currentTag) => {
   const breadcrumb = isAll
     ? renderBreadcrumb([{ text: LANGS[lang].siteTitle }])
     : renderBreadcrumb([
-        { text: LANGS[lang].siteTitle, href: "../index.html" },
+        { text: LANGS[lang].siteTitle, href: "../" },
         { text: tagText },
       ]);
   const { tocButton, aside } = renderTagFilter(lang, currentTag, prefix);
@@ -263,8 +263,8 @@ const renderTagsListing = (lang, items, currentTag) => {
     otherLang: ol,
     otherLangLabel: LANGS[lang].switcherLabel,
     otherLangUrl: isAll
-      ? `../${ol}/index.html`
-      : `../../${ol}/${currentTag}/index.html`,
+      ? `../${ol}/`
+      : `../../${ol}/${currentTag}/`,
     tocButton,
     aside,
     content,
@@ -336,7 +336,7 @@ for (const lang of ["en", "sv"]) {
   }
 }
 
-writeRedirect(resolve(dist, "index.html"), "en/index.html");
+writeRedirect(resolve(dist, "index.html"), "en/");
 
 // Per-source screens: layered copy into dist/screens/<source>/. Each
 // screensDir overlays the previous on name collisions; forceManual files
