@@ -336,7 +336,7 @@ for (const lang of ["en", "sv"]) {
   }
 }
 
-writeRedirect(resolve(dist, "index.html"), "en/");
+writeRedirect(resolve(dist, "index.html"), "sv/");
 
 // Per-source screens: layered copy into dist/screens/<source>/. Each
 // screensDir overlays the previous on name collisions; forceManual files
