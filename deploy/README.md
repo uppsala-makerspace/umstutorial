@@ -54,6 +54,14 @@ Three fixes, in order of preference:
    sudo apt-get install -y nodejs
    ```
 
+   If the install fails with a `dpkg` file-conflict on `/usr/include/node/common.gypi` (or similar), purge Ubuntu's split `libnode-dev` / `libnode*` packages first — NodeSource's `nodejs` deb is self-contained and collides with them:
+
+   ```sh
+   sudo apt-get purge -y libnode-dev 'libnode[0-9]*'
+   sudo apt-get autoremove -y
+   sudo apt-get install -y nodejs
+   ```
+
    Then re-run `sudo DEPLOY_USER=deploy ./deploy/bootstrap.sh`.
 
 2. **Use nvm under the deploy user** and point the service at the nvm bin directory. After installing nvm + node 22 as the deploy user, edit `/etc/systemd/system/umstutorial-deploy.service` and change the `Environment=PATH=…` line to prepend the nvm bin path:
