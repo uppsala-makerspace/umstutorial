@@ -38,7 +38,7 @@ cd "$CLONE"
 
 self_before=$(git rev-parse HEAD 2>/dev/null || echo "")
 umsme_before=$(cat sources/umsme/.synced-sha 2>/dev/null || echo "")
-gdrive_before=$(sha256sum sources/gdrive/.synced-sha 2>/dev/null | awk '{print $1}')
+gdrive_before=$(sha256sum sources/gdrive/.synced-sha 2>/dev/null | awk '{print $1}' || true)
 
 step "fetching umstutorial origin/$BRANCH"
 git fetch --quiet origin "$BRANCH"
