@@ -54,10 +54,16 @@ step "probing node visible to deploy user"
 #             no nvm. This is what the systemd unit will see.
 # If `service` finds no node, the timer will fail every run even if `login`
 # looks fine. That's the most common nvm pitfall.
+#
+# Note: `command -v` is a shell builtin, so it must be invoked through a
+# shell (env -i can't exec it directly). bash without --noprofile/--norc
+# is fine here because `-c` is non-interactive and doesn't source init
+# files unless BASH_ENV is set — which it isn't, because env -i cleared
+# the environment.
 login_node="$(sudo -u "$DEPLOY_USER" -i bash -lc 'command -v node 2>/dev/null' 2>/dev/null || true)"
 login_ver="$(sudo -u "$DEPLOY_USER" -i bash -lc 'node --version 2>/dev/null' 2>/dev/null || true)"
-svc_node="$(sudo -u "$DEPLOY_USER" env -i HOME="$deploy_home" PATH="$SYSTEMD_PATH" command -v node 2>/dev/null || true)"
-svc_ver="$(sudo -u "$DEPLOY_USER" env -i HOME="$deploy_home" PATH="$SYSTEMD_PATH" node --version 2>/dev/null || true)"
+svc_node="$(sudo -u "$DEPLOY_USER" env -i HOME="$deploy_home" PATH="$SYSTEMD_PATH" bash -c 'command -v node 2>/dev/null' 2>/dev/null || true)"
+svc_ver="$( sudo -u "$DEPLOY_USER" env -i HOME="$deploy_home" PATH="$SYSTEMD_PATH" bash -c 'node --version  2>/dev/null' 2>/dev/null || true)"
 
 printf '  login shell   : %s %s\n' "${login_node:-<not found>}" "${login_ver}"
 printf '  service env   : %s %s\n' "${svc_node:-<not found>}"   "${svc_ver}"
