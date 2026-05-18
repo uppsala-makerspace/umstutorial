@@ -6,7 +6,7 @@ Server-side hourly rebuild + rsync to webroot. Triggered by a systemd timer; no 
 
 | Component                          | Purpose                                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------------------------- |
-| `deploy.sh`                        | Idempotent pipeline: fetch umstutorial → `npm ci` (only if lockfile moved) → sync umsme → build → rsync `dist/` to webroot. Skips build+rsync when nothing changed. |
+| `deploy.sh`                        | Idempotent pipeline: fetch umstutorial → `npm ci` (only if lockfile moved) → sync umsme → sync gdrive → build → rsync `dist/` to webroot. Skips build+rsync when nothing changed. |
 | `umstutorial-deploy.service`      | Oneshot systemd unit that runs `deploy.sh` as the deploy user.                              |
 | `umstutorial-deploy.timer`        | Fires `OnCalendar=hourly` with `Persistent=true` so a missed run catches up after reboot.   |
 | `bootstrap.sh`                     | One-time setup: installs the units, enables the timer, triggers a first deploy.             |
@@ -88,7 +88,7 @@ journalctl -fu umstutorial-deploy.service         # follow live
 sudo systemctl start umstutorial-deploy.service   # force a deploy now
 ```
 
-A run that found no changes logs one line (`no changes (umstutorial=…, umsme=…)`); a real deploy logs `deployed umstutorial=… umsme=…`. Everything from the build pipeline goes to the journal.
+A run that found no changes logs one line (`no changes (umstutorial=…, umsme=…, gdrive=…)`); a real deploy logs `deployed umstutorial=… umsme=… gdrive=…`. Everything from the build pipeline goes to the journal.
 
 ## Upgrading
 

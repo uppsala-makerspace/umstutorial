@@ -37,7 +37,8 @@ fi
 cd "$CLONE"
 
 self_before=$(git rev-parse HEAD 2>/dev/null || echo "")
-upstream_before=$(cat sources/umsme/.synced-sha 2>/dev/null || echo "")
+umsme_before=$(cat sources/umsme/.synced-sha 2>/dev/null || echo "")
+gdrive_before=$(sha256sum sources/gdrive/.synced-sha 2>/dev/null | awk '{print $1}')
 
 step "fetching umstutorial origin/$BRANCH"
 git fetch --quiet origin "$BRANCH"
@@ -54,16 +55,23 @@ fi
 
 step "syncing umsme via HTTPS"
 scripts/sync-umsme.sh --https
-upstream_after=$(cat sources/umsme/.synced-sha)
-ok "umsme at $upstream_after"
+umsme_after=$(cat sources/umsme/.synced-sha)
+ok "umsme at $umsme_after"
 
-# Skip the build+rsync when neither side moved and the webroot already
-# has content. First-ever runs (empty webroot) always rebuild.
+step "syncing gdrive"
+npm run --silent sync:gdrive
+gdrive_after=$(sha256sum sources/gdrive/.synced-sha | awk '{print $1}')
+ok "gdrive at $gdrive_after"
+
+# Skip the build+rsync when nothing moved and the webroot already has
+# content. First-ever runs (empty webroot) always rebuild.
 if [[ "$self_before" == "$self_after" \
-   && "$upstream_before" == "$upstream_after" \
+   && "$umsme_before" == "$umsme_after" \
+   && "$gdrive_before" == "$gdrive_after" \
    && -d "$WEBROOT" \
    && -n "$(ls -A "$WEBROOT" 2>/dev/null)" ]]; then
-  printf '\n= no changes (umstutorial=%s, umsme=%s)\n' "$self_after" "$upstream_after"
+  printf '\n= no changes (umstutorial=%s, umsme=%s, gdrive=%s)\n' \
+    "$self_after" "$umsme_after" "$gdrive_after"
   exit 0
 fi
 
@@ -76,4 +84,5 @@ mkdir -p "$WEBROOT"
 rsync -a --delete dist/ "$WEBROOT/"
 ok "published"
 
-printf '\n= deployed umstutorial=%s umsme=%s\n' "$self_after" "$upstream_after"
+printf '\n= deployed umstutorial=%s umsme=%s gdrive=%s\n' \
+  "$self_after" "$umsme_after" "$gdrive_after"
