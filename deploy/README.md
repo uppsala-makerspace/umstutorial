@@ -36,6 +36,41 @@ sudo DEPLOY_USER=deploy ./deploy/bootstrap.sh
 
 The first deploy populates `/var/www/tutorial.uppsalamakerspace.se`. Point your existing nginx vhost at that directory if it isn't already.
 
+## Node and the deploy user
+
+`bootstrap.sh` probes two things separately:
+
+- **login shell** — what `sudo -iu deploy` sees. Sources `.bashrc`/`.profile`, so any `nvm` initialisation there runs.
+- **service env** — the bare environment `systemd` will give the unit: a clean `PATH`, no shell init, no nvm.
+
+The systemd timer fails if the *service env* probe finds no `node` (or one older than 18), even if the login shell looks fine. This is the most common nvm trap: `node` lives under `~/.nvm/versions/node/v…/bin`, which only ends up on `PATH` when a shell init script runs.
+
+Three fixes, in order of preference:
+
+1. **Install node ≥ 18 system-wide** (recommended). Puts `node` in `/usr/bin` or `/usr/local/bin`, which is on the service PATH out of the box. On Debian/Ubuntu:
+
+   ```sh
+   curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+   sudo apt-get install -y nodejs
+   ```
+
+   Then re-run `sudo DEPLOY_USER=deploy ./deploy/bootstrap.sh`.
+
+2. **Use nvm under the deploy user** and point the service at the nvm bin directory. After installing nvm + node 22 as the deploy user, edit `/etc/systemd/system/umstutorial-deploy.service` and change the `Environment=PATH=…` line to prepend the nvm bin path:
+
+   ```ini
+   Environment=PATH=/home/deploy/.nvm/versions/node/v22.21.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+   ```
+
+   Then `sudo systemctl daemon-reload && sudo systemctl start umstutorial-deploy.service`. The version directory will change when you bump node, so prefer fix 1 if you can.
+
+3. **Symlink the root-installed nvm node into a system path.** Quick and dirty; brittle when node is upgraded. Only as a stopgap:
+
+   ```sh
+   sudo ln -sf "$(readlink -f /root/.nvm/versions/node/v22.21.0/bin/node)" /usr/local/bin/node
+   sudo ln -sf "$(readlink -f /root/.nvm/versions/node/v22.21.0/bin/npm)"  /usr/local/bin/npm
+   ```
+
 ## Operator commands
 
 ```sh
