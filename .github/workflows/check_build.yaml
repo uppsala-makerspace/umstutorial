@@ -1,0 +1,28 @@
+# Check that the website can be built,
+# so that pull requests can show if a merge will keep things working
+name: Check build
+
+jobs:
+  check_build:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install prerequisites
+        run: npm install
+
+      - name: allow to skip 'npm sync sync:umsme', as this is a private repo
+        run: |
+          # Confirm line 48 is the correct line
+          sed -n '48p' build.js | grep "process.exit" || exit
+          sed -i '48s|.*|      // process.exit(1);|' build.js
+          cat build.js
+
+      - name: update text from public sources only
+        run: npm run sync:gdrive && npm run sync:github
+
+      - name: build website
+        run: npm run build
+
