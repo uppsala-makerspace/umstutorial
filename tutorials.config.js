@@ -39,6 +39,8 @@ export const SOURCES = {
 export const TAGS = {
   app:     { en: "Member app",   sv: "Medlemsapp" },
   wood:    { en: "Wood workshop", sv: "Träverkstad" },
+  courses:    { en: "Courses", sv: "Kurser" },
+
   "3D": { en: "3D Workshop",  sv: "3D-verkstad" },
   electronics: { en: "Electronics workshop", sv: "Elektronikverkstad" }
 };
@@ -110,6 +112,9 @@ export const TUTORIALS = [
   { source: "github", slug: "your-first-soldering", tag: "electronics",
     repo: "https://github.com/uppsala-makerspace/loedningskurs.git",
     dir: "docs/chapters/1_first_solder" },
+  { source: "github", slug: "saturday-courses", tag: "courses",
+    repo: "https://github.com/uppsala-makerspace/loerdagskurser.git",
+    dir: "docs/kurserna", files: { en: "generated_en.md", sv: "generated_sv.md"} },
   { source: "github", slug: "prusa-print", tag: "3D",
     repo: "https://github.com/uppsala-makerspace/3d_skrivningskurs.git",
     dir: "docs/chapters/1_print" },
