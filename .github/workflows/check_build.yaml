@@ -2,6 +2,10 @@
 # so that pull requests can show if a merge will keep things working
 name: Check build
 
+on:
+  push:
+  pull_request:
+
 jobs:
   check_build:
     runs-on: ubuntu-latest
