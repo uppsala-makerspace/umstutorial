@@ -19,7 +19,7 @@ jobs:
 
       - name: allow to skip 'npm sync sync:umsme', as this is a private repo
         run: |
-          # Confirm line 48 is the correct line
+          # Confirm line 48 is the correct line, as there are two exits
           sed -n '48p' build.js | grep "process.exit" || exit
           sed -i '48s|.*|      // process.exit(1);|' build.js
           cat build.js
