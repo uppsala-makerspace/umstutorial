@@ -108,7 +108,7 @@ export const TUTORIALS = [
     repo: "https://github.com/uppsala-makerspace/loedningskurs.git",
     dir: "docs/chapters/0_setup" },
   { source: "github", slug: "your-first-soldering", tag: "electronics",
-    repo: "https://github.com/uppsala-makerspace/loedningskurs.git",
+    repo: "https://github.com/uppsala-makerspaceBREAKONPURPOSE/loedningskurs.git",
     dir: "docs/chapters/1_first_solder" },
   { source: "github", slug: "prusa-print", tag: "3D",
     repo: "https://github.com/uppsala-makerspace/3d_skrivningskurs.git",
