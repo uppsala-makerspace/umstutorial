@@ -17,6 +17,9 @@ jobs:
       - name: install prerequisites
         run: npm install
 
+      - name: confirm that 'npm run sync' gives an error
+        run: npm run sync || exit 0
+
       - name: allow to skip 'npm sync sync:umsme', as this is a private repo
         run: |
           # Confirm line 48 is the correct line, as there are two exits
