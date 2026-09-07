@@ -23,7 +23,11 @@ REPO_URL=${REPO_URL:-https://github.com/uppsala-makerspace/umstutorial.git}
 BRANCH=${BRANCH:-main}
 WEBROOT=${WEBROOT:-/var/www/tutorial.uppsalamakerspace.se}
 STATE_DIR=${STATE_DIR:-/var/lib/umstutorial}
-LOCK=${LOCK:-/run/lock/umstutorial-deploy.lock}
+# Lock lives in our own dir, not /run/lock: that one is world-writable with
+# the sticky bit, and fs.protected_regular (on by default on Ubuntu) refuses
+# to open a file there that another user created — root included. A stale
+# lock from the old deploy-user setup would block every run.
+LOCK=${LOCK:-$STATE_DIR/deploy.lock}
 
 IMAGE=${IMAGE:-node:22-bookworm}
 BUILD_TIMEOUT=${BUILD_TIMEOUT:-15m}
