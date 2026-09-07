@@ -256,7 +256,9 @@ const renderTutorial = (lang, slug, tag, parsed, hasOtherLang) => {
   ].filter(Boolean));
   const html = fillTemplate({
     lang,
-    bodyClass: "page-tutorial",
+    // Without a TOC the two-column grid would drop the content into the
+    // narrow sidebar column; `no-toc` switches the layout to one column.
+    bodyClass: aside ? "page-tutorial" : "page-tutorial no-toc",
     title: parsed.title,
     breadcrumb,
     cssUrl: up(depth) + "site.css",
@@ -361,6 +363,13 @@ for (const { source, slug, tag } of TUTORIALS) {
   for (const lang of available) {
     const mdSource = readFileSync(resolve(srcRoot, lang, `${slug}.md`), "utf8");
     const parsed = parseMarkdown(mdSource, source, lang);
+    if (!parsed.title) {
+      // No H1 in the source (a Google Doc without a Title/Heading 1, say):
+      // fall back to the slug so the tab, breadcrumb and listing card aren't
+      // blank. The author should still add a heading.
+      console.warn(`${source}/${lang}/${slug}: no H1 — using slug as title`);
+      parsed.title = slug;
+    }
     const hasOtherLang = available.includes(otherLang(lang));
     renderTutorial(lang, slug, tag, parsed, hasOtherLang);
     const entry = { slug, title: parsed.title, summary: parsed.summary, tag };

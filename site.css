@@ -133,6 +133,13 @@ a:hover { color: var(--brand-green); }
   align-items: start;
 }
 
+/* Tutorials with no headings get no TOC: one centred column, same width
+   as the content column would have had. */
+.page-tutorial.no-toc .layout {
+  display: block;
+  max-width: 820px;
+}
+
 /* --- Content --- */
 
 .content { min-width: 0; }
