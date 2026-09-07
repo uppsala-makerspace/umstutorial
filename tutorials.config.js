@@ -11,8 +11,9 @@
 // dist/screens/<source>/ in order (later overlays earlier); `forceManual`
 // names files that must come from the manual dir even when generated.
 //
-// TAGS / TUTORIALS: loaded from tutorials.data.yaml — see that file for the
-// per-source entry shapes — and run through scripts/data-schema.js before
+// TAGS / TUTORIALS: loaded from tutorials.data.yaml (tutorials there are a
+// tag → slug → entry hierarchy; see that file for the per-source entry
+// shapes) and run through scripts/data-schema.js before
 // anything else sees them. Because the data file bypasses code review, every
 // field that ends up in a git command, URL, or filesystem path is whitelisted
 // there; a file that fails validation aborts the build and every sync script.
@@ -23,7 +24,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { load } from "js-yaml";
-import { validateData } from "./scripts/data-schema.js";
+import { validateData, flattenTutorials } from "./scripts/data-schema.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -64,4 +65,6 @@ const data = validateData(
 );
 
 export const TAGS = data.tags;
-export const TUTORIALS = data.tutorials;
+// The YAML groups tutorials by tag and slug; the rest of the code wants the
+// flat ordered list. Order within a tag is the YAML key order.
+export const TUTORIALS = flattenTutorials(data.tutorials);

@@ -17,6 +17,9 @@ try {
     `✓ ${DATA_PATH}: ${Object.keys(TAGS).length} tag(s), ${TUTORIALS.length} tutorial(s)`,
   );
 } catch (err) {
-  console.error(`✗ ${err instanceof DataError ? err.message : err.stack || err}`);
+  // DataError = schema violation, YAMLException = unparsable file (including
+  // duplicate keys); anything else is a bug worth the full stack.
+  const clean = err instanceof DataError || err?.name === "YAMLException";
+  console.error(`✗ ${clean ? err.message : err.stack || err}`);
   process.exit(1);
 }

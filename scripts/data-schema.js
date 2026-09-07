@@ -13,6 +13,14 @@
 //   slug   [A-Za-z0-9-]  — used verbatim in filenames and URLs
 //   docs   Google Doc ids
 //
+// Shape: tags: {<tag>: {en, sv}}, tutorials: {<tag>: {default_source?,
+// <slug>: {source?, …}}}. `default_source` is a reserved first child of a tag
+// (never a valid slug — slugs can't contain "_") and fills in `source` for
+// every entry under it that doesn't set its own. A bare `slug:` (YAML null)
+// is an entry with no fields. flattenTutorials() turns all of that into the
+// ordered [{source, slug, tag, …}] list build.js and the sync scripts consume
+// (order = YAML key order).
+//
 // Unknown fields are rejected so a new field can't silently become an
 // attack surface before its consumer validates it.
 //
@@ -39,6 +47,8 @@ const FIELDS = {
   gdrive: ["docs"],
   github: ["repo", "dir", "ref", "files"],
 };
+
+const DEFAULT_SOURCE = "default_source";
 
 export class DataError extends Error {}
 
@@ -100,40 +110,37 @@ function checkDir(where, dir) {
   }
 }
 
-function checkTutorial(t, i, tags, sourceNames, seenSlugs) {
-  const where = `tutorials[${i}]`;
-  if (!isPlainObject(t)) fail(where, "must be a map");
+function checkEntry(tag, slug, raw, sourceNames, seenSlugs, defaultSource) {
+  const w = `tutorials.${tag}.${slug}`;
+  if (!RE.slug.test(slug)) fail(`tutorials.${tag}`, `slug must match ${RE.slug}, got ${JSON.stringify(slug)}`);
+  if (seenSlugs.has(slug)) fail(w, `duplicate slug (also under ${seenSlugs.get(slug)})`);
+  seenSlugs.set(slug, tag);
+  const e = raw ?? {}; // bare `slug:` → entry with no fields
+  if (!isPlainObject(e)) fail(w, "must be a map (or empty)");
 
-  const { source, slug, tag } = t;
+  const source = e.source ?? defaultSource;
+  if (source === undefined) {
+    fail(w, `no source: and the tag has no ${DEFAULT_SOURCE}`);
+  }
   if (!isNonEmptyString(source) || !sourceNames.includes(source)) {
-    fail(where, `source must be one of ${sourceNames.join(", ")}, got ${JSON.stringify(source)}`);
+    fail(w, `source must be one of ${sourceNames.join(", ")}, got ${JSON.stringify(source)}`);
   }
-  if (!isNonEmptyString(slug) || !RE.slug.test(slug)) {
-    fail(where, `slug must match ${RE.slug}, got ${JSON.stringify(slug)}`);
-  }
-  const w = `tutorials[${i}] (${slug})`;
-  if (seenSlugs.has(slug)) fail(w, "duplicate slug");
-  seenSlugs.add(slug);
-  if (!isNonEmptyString(tag) || !(tag in tags)) {
-    fail(w, `tag must be one of ${Object.keys(tags).join(", ")}, got ${JSON.stringify(tag)}`);
-  }
-
-  checkKeys(w, t, ["source", "slug", "tag", ...FIELDS[source]]);
+  checkKeys(w, e, ["source", ...FIELDS[source]]);
 
   if (source === "gdrive") {
-    if (!("docs" in t)) fail(w, "gdrive entries need a docs map");
-    checkLangMap(`${w}.docs`, t.docs, RE.docId, "a Google Doc id");
+    if (!("docs" in e)) fail(w, "gdrive entries need a docs map");
+    checkLangMap(`${w}.docs`, e.docs, RE.docId, "a Google Doc id");
   }
 
   if (source === "github") {
-    if (!isNonEmptyString(t.repo) || !RE.repo.test(t.repo)) {
-      fail(`${w}.repo`, `must be https://github.com/<owner>/<repo>[.git], got ${JSON.stringify(t.repo)}`);
+    if (!isNonEmptyString(e.repo) || !RE.repo.test(e.repo)) {
+      fail(`${w}.repo`, `must be https://github.com/<owner>/<repo>[.git], got ${JSON.stringify(e.repo)}`);
     }
-    if ("ref" in t && (!isNonEmptyString(t.ref) || !RE.ref.test(t.ref))) {
-      fail(`${w}.ref`, `must match ${RE.ref}, got ${JSON.stringify(t.ref)}`);
+    if ("ref" in e && (!isNonEmptyString(e.ref) || !RE.ref.test(e.ref))) {
+      fail(`${w}.ref`, `must match ${RE.ref}, got ${JSON.stringify(e.ref)}`);
     }
-    if ("dir" in t) checkDir(`${w}.dir`, t.dir);
-    if ("files" in t) checkLangMap(`${w}.files`, t.files, RE.file, "a bare *.md filename");
+    if ("dir" in e) checkDir(`${w}.dir`, e.dir);
+    if ("files" in e) checkLangMap(`${w}.files`, e.files, RE.file, "a bare *.md filename");
   }
 }
 
@@ -148,10 +155,37 @@ export function validateData(data, sourceNames) {
 
   checkTags(data.tags);
 
-  if (!Array.isArray(data.tutorials)) fail("tutorials", "must be a list");
-  const seen = new Set();
-  data.tutorials.forEach((t, i) =>
-    checkTutorial(t, i, data.tags, sourceNames, seen),
-  );
+  if (!isPlainObject(data.tutorials)) fail("tutorials", "must be a map of tag → {slug → entry}");
+  const seen = new Map(); // slug -> tag
+  for (const [tag, entries] of Object.entries(data.tutorials)) {
+    if (!(tag in data.tags)) {
+      fail(`tutorials.${tag}`, `unknown tag — add it under tags: (known: ${Object.keys(data.tags).join(", ")})`);
+    }
+    if (!isPlainObject(entries)) fail(`tutorials.${tag}`, "must be a map of slug → entry");
+    const { [DEFAULT_SOURCE]: defaultSource, ...slugs } = entries;
+    if (defaultSource !== undefined
+        && (!isNonEmptyString(defaultSource) || !sourceNames.includes(defaultSource))) {
+      fail(`tutorials.${tag}.${DEFAULT_SOURCE}`, `must be one of ${sourceNames.join(", ")}, got ${JSON.stringify(defaultSource)}`);
+    }
+    for (const [slug, e] of Object.entries(slugs)) {
+      checkEntry(tag, slug, e, sourceNames, seen, defaultSource);
+    }
+  }
   return data;
+}
+
+// tutorials: {<tag>: {default_source?, <slug>: entry}} →
+// [{source, slug, tag, ...entry fields}], in file order, with the tag's
+// default_source filled in where an entry has no source of its own. This is
+// the shape build.js and the sync scripts work with. Assumes validated input.
+export function flattenTutorials(tutorials) {
+  const out = [];
+  for (const [tag, entries] of Object.entries(tutorials)) {
+    const { [DEFAULT_SOURCE]: defaultSource, ...slugs } = entries;
+    for (const [slug, raw] of Object.entries(slugs)) {
+      const { source = defaultSource, ...rest } = raw ?? {};
+      out.push({ source, slug, tag, ...rest });
+    }
+  }
+  return out;
 }

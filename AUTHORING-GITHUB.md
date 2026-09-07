@@ -31,25 +31,34 @@ names its own repo and directory.
 
 ## Add it to the site
 
-Add an entry to `tutorials` in [`tutorials.data.yaml`](tutorials.data.yaml):
+Add an entry under its tag in [`tutorials.data.yaml`](tutorials.data.yaml):
 
 ```yaml
-- {source: github, slug: <slug>, tag: <tag>,
-   repo: https://github.com/<org>/<repo>,
-   dir: <subdir>,                 # optional, default repo root
-   ref: main,                     # optional, default the remote's HEAD
-   files: {sv: README.md}}        # optional, default {sv: README.md}
+tutorials:
+  <tag>:
+    default_source: github          # applies to every slug under the tag
+    <slug>:
+      repo: https://github.com/<org>/<repo>.git
+      dir: <subdir>                 # optional, default repo root
+      ref: main                     # optional, default the remote's HEAD
+      files: {sv: README.md}        # optional, default {sv: README.md}
 ```
+
+If the tag's `default_source` is something else, add `source: github` to the
+entry. The position among the other slugs under the tag is where the tutorial
+appears in that tag's listing.
 
 A pull request that touches only `tutorials.data.yaml` needs no code review —
 you can merge it yourself once the "Check build" status is green. Anything
 else needs a reviewed pull request. The file is validated strictly (run
 `node scripts/validate-data.js` locally to check), so keep to the shapes below.
 
-- `slug` is the URL segment on the site (`/<tag>/<slug>/`): letters, digits and
-  `-` only, unique across the file.
-- `tag` must exist under `tags:` in the same file. To add a new tag, add it
-  there with `en`/`sv` labels, e.g. `print3d: {en: 3D printing, sv: 3D-skrivare}`.
+- `<slug>` is the URL segment on the site (`/<tag>/<slug>/`): letters, digits
+  and `-` only, unique across the file.
+- `<tag>` must exist under `tags:` in the same file. To add a new tag, add it
+  there with `en`/`sv` labels, e.g. `print3d: {en: 3D printing, sv: 3D-skrivare}`,
+  then open a `print3d:` section under `tutorials:` starting with its
+  `default_source`.
 - `repo` must be an `https://github.com/<owner>/<repo>[.git]` URL. Other hosts,
   ssh URLs and anything starting with `-` are rejected.
 - `dir` is only needed when the tutorial isn't at the repo root. Relative, no

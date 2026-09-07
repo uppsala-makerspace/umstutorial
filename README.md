@@ -46,17 +46,23 @@ The default language is set by `DEFAULT_LANG` in `tutorials.config.js`.
 
 1. Create `content/en/<slug>.md` and `content/sv/<slug>.md`.
 2. Reference screens (if any) as `../screens/<name>.png`, with the actual file at `content/screens/<name>.png`.
-3. Add an entry to `tutorials` in `tutorials.data.yaml`:
+3. Add an entry under the tag in `tutorials.data.yaml`:
    ```yaml
-   - {source: local, slug: <slug>, tag: <tag>}
+   tutorials:
+     <tag>:
+       <slug>: {source: local}     # or a bare `<slug>:` if the tag's default_source is local
    ```
 4. `npm run build`.
 
 ## Content data: `tutorials.data.yaml`
 
-`tutorials.data.yaml` holds the tag labels and the tutorial list as plain data
-(no code). `DEFAULT_LANG` and `SOURCES` stay in `tutorials.config.js`, which
-reads and validates the YAML.
+`tutorials.data.yaml` holds the tag labels and the tutorials as plain data
+(no code), as a hierarchy `tutorials: <tag>: <slug>: {…}`. Each tag opens with
+`default_source`, which applies to every slug under it that doesn't set its own
+`source`. The order of slugs under a tag is the display order in that tag's
+listing. `DEFAULT_LANG`
+and `SOURCES` stay in `tutorials.config.js`, which reads and validates the YAML
+and flattens it into the `TUTORIALS` list the build and sync scripts consume.
 
 A pull request that touches **only** `tutorials.data.yaml` needs no code
 review: the file is deliberately left unowned in `.github/CODEOWNERS`, so with
@@ -66,8 +72,9 @@ maintainer's approval. No bot account or token is involved.
 
 This is safe because the file is validated strictly before anything uses it
 (`scripts/data-schema.js`, run by `tutorials.config.js` and as the first CI
-step via `node scripts/validate-data.js`): `slug` is `[A-Za-z0-9-]` and unique,
-`tag` must exist, `repo` must be an `https://github.com/<owner>/<repo>` URL,
+step via `node scripts/validate-data.js`): `slug` keys are `[A-Za-z0-9-]` and
+unique, tag keys must exist under `tags`, `repo` must be an
+`https://github.com/<owner>/<repo>` URL,
 `dir`/`files` can't escape the repo, `docs` are Google Doc ids, and unknown
 fields are rejected. On top of that, the production build runs in a throw-away
 container (see Deployment), so even a schema gap can't reach the server.
@@ -86,8 +93,8 @@ Branch protection for `main` (repository settings, one-time):
 build.js              # build pipeline
 template.html         # page shell
 site.css              # styles
-tutorials.data.yaml   # TAGS + TUTORIALS (content data; mergeable without review)
-tutorials.config.js   # DEFAULT_LANG, SOURCES; loads + validates tutorials.data.yaml
+tutorials.data.yaml   # tag labels + tutorials by tag/slug (content data; mergeable without review)
+tutorials.config.js   # DEFAULT_LANG, SOURCES; loads, validates + flattens tutorials.data.yaml
 scripts/data-schema.js   # strict schema for tutorials.data.yaml
 scripts/validate-data.js # CLI wrapper for the schema check (CI runs it)
 scripts/sync-umsme.sh # umsme source loader
