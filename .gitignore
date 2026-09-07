@@ -1,3 +1,8 @@
 node_modules/
 dist/
 sources/
+
+# Local conveniences, not part of the project
+.idea/
+# Symlink to a sibling checkout of the umsme repo (content is synced into sources/)
+umsme

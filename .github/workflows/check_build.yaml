@@ -1,4 +1,8 @@
 # Check that the website can be built, so pull requests surface build breakage.
+#
+# This is also the required status check that gates auto-merge of
+# tutorials.data.yaml (see .github/CODEOWNERS): a data file that fails the
+# schema check or breaks the build can never reach main.
 name: Check build
 
 on:
@@ -14,6 +18,11 @@ jobs:
       - name: install prerequisites
         run: npm ci
 
+      # Fail fast with a one-line message on a bad data file, instead of deep
+      # inside a clone or the build.
+      - name: validate tutorials.data.yaml
+        run: node scripts/validate-data.js
+
       # All source repos are public, so this needs no SSH key or token:
       # sync:umsme clones over HTTPS, sync:gdrive/sync:github fetch anonymously.
       - name: sync sources
@@ -21,3 +30,12 @@ jobs:
 
       - name: build website
         run: npm run build
+
+  # The deploy runner cannot be exercised here (it needs docker + a webroot),
+  # but shellcheck catches quoting and logic slips before they reach a server.
+  deploy_scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck deploy scripts
+        run: shellcheck -x deploy/*.sh scripts/*.sh

@@ -1,17 +1,27 @@
 [Unit]
-Description=Build and publish umstutorial to its webroot
-After=network-online.target
+Description=Build umstutorial in a container and publish it to the webroot
+After=network-online.target docker.service
 Wants=network-online.target
+Requires=docker.service
 
 [Service]
 Type=oneshot
-User=__DEPLOY_USER__
-Group=__DEPLOY_USER__
-WorkingDirectory=/srv/umstutorial
-# Explicit PATH so deploy.sh finds node/npm/git/rsync. Override here if
-# node lives outside the standard system locations (e.g. under nvm:
-# prepend /home/<user>/.nvm/versions/node/v22.21.0/bin to this list).
-Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/srv/umstutorial/deploy/deploy.sh
+# Root is needed for the docker socket and to write the webroot. Nothing from
+# the repository runs in this unit's context — it all runs in the container
+# started by the script below (see deploy/README.md).
+User=root
+# Creates and owns /var/lib/umstutorial (staging dirs, last-deployed-sha).
+StateDirectory=umstutorial
+WorkingDirectory=/var/lib/umstutorial
+Environment=REPO_URL=https://github.com/uppsala-makerspace/umstutorial.git
+Environment=BRANCH=main
+Environment=WEBROOT=/var/www/tutorial.uppsalamakerspace.se
+ExecStart=/usr/local/sbin/umstutorial-deploy.sh
 Nice=10
-TimeoutStartSec=10min
+TimeoutStartSec=20min
+# Hardening that still lets the docker CLI work.
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes

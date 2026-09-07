@@ -31,24 +31,34 @@ names its own repo and directory.
 
 ## Add it to the site
 
-Add an entry to `TUTORIALS` in [`tutorials.config.js`](tutorials.config.js):
+Add an entry to `tutorials` in [`tutorials.data.yaml`](tutorials.data.yaml):
 
-```js
-{ source: "github", slug: "<slug>", tag: "<tag>",
-  repo: "https://github.com/<org>/<repo>",
-  dir: "<subdir>",              // optional, default "" (repo root)
-  ref: "main",                  // optional, default the remote's HEAD
-  files: { sv: "README.md" } }  // optional, default { sv: "README.md" }
+```yaml
+- {source: github, slug: <slug>, tag: <tag>,
+   repo: https://github.com/<org>/<repo>,
+   dir: <subdir>,                 # optional, default repo root
+   ref: main,                     # optional, default the remote's HEAD
+   files: {sv: README.md}}        # optional, default {sv: README.md}
 ```
 
-- `slug` is the URL segment on the site (`/<tag>/<slug>/`).
-- `tag` must exist in `TAGS`. To add a new tag, add it there with `en`/`sv`
-  labels, e.g. `print3d: { en: "3D printing", sv: "3D-skrivare" }`.
-- `dir` is only needed when the tutorial isn't at the repo root.
+A pull request that touches only `tutorials.data.yaml` needs no code review —
+you can merge it yourself once the "Check build" status is green. Anything
+else needs a reviewed pull request. The file is validated strictly (run
+`node scripts/validate-data.js` locally to check), so keep to the shapes below.
+
+- `slug` is the URL segment on the site (`/<tag>/<slug>/`): letters, digits and
+  `-` only, unique across the file.
+- `tag` must exist under `tags:` in the same file. To add a new tag, add it
+  there with `en`/`sv` labels, e.g. `print3d: {en: 3D printing, sv: 3D-skrivare}`.
+- `repo` must be an `https://github.com/<owner>/<repo>[.git]` URL. Other hosts,
+  ssh URLs and anything starting with `-` are rejected.
+- `dir` is only needed when the tutorial isn't at the repo root. Relative, no
+  `..`.
 - `ref` pins a branch, tag, or commit SHA. Omit it to track the default branch.
 - `files` maps each language to its main file. Swedish-only is fine (the default
   is `{ sv: "README.md" }`). To add English later, point it at that language's
-  file, e.g. `files: { sv: "README.md", en: "README.en.md" }`.
+  file, e.g. `files: { sv: "README.md", en: "README.en.md" }`. Values are bare
+  `*.md` filenames inside `dir` — no paths.
 
 ## Build and preview
 
@@ -60,4 +70,4 @@ npm run serve         # http://localhost:8000
 
 `sources/` is gitignored — upstream content never enters this repo's history.
 Re-running `npm run sync:github` wipes and rebuilds `sources/github/` from
-scratch, so removing a tutorial from `TUTORIALS` drops it on the next sync.
+scratch, so removing a tutorial from `tutorials.data.yaml` drops it on the next sync.

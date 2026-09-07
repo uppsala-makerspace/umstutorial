@@ -1,120 +1,135 @@
 # Auto-deploy
 
-Server-side hourly rebuild + rsync to webroot. Triggered by a systemd timer; no CI, no webhooks, no secrets to manage.
+The server rebuilds the site hourly and rsyncs it into the nginx webroot. No CI,
+no webhooks, no secrets — and, since this revision, **no code from the repo runs
+on the host**.
+
+## Threat model, in short
+
+Anyone who can get a commit onto `main` controls what the build does: `package.json`
+lifecycle scripts, `build.js`, the sync scripts, and everything they download. In the
+old setup those ran directly on the server (as a low-privilege user, but with network,
+a home directory, and write access to the webroot). With `tutorials.data.yaml` now
+mergeable without review, that had to change.
+
+Now:
+
+| Where           | What runs                                                          | Trust                                                  |
+| --------------- | ------------------------------------------------------------------ | ------------------------------------------------------ |
+| host            | `/usr/local/sbin/umstutorial-deploy.sh` + the systemd units       | installed by root, by hand, from a reviewed checkout    |
+| container       | `git clone` → `npm ci` → `npm run sync` → `npm run build`          | untrusted; throw-away `node:22-bookworm`, non-root user |
+| host            | sanity check + `rsync --delete` into the webroot                  | trusted script again                                    |
+
+The container gets `--read-only`, `--cap-drop ALL`, `no-new-privileges`, memory / CPU /
+pid limits, a wall-clock timeout, and exactly two writable host paths: a fresh staging
+dir it puts the finished site in, and a scratch dir for the clone and npm cache. Both are
+deleted after every run. It needs outbound network (GitHub, Google Docs), so that stays
+on. The worst a malicious commit can do is publish a bad site or waste some CPU for
+fifteen minutes.
+
+Consequence for maintainers: **changes under `deploy/` are not picked up by the timer.**
+The files in this directory are the source of truth, but they only take effect when
+root re-runs `install.sh`. That is deliberate — the alternative is exactly the hole this
+closes.
 
 ## What runs
 
-| Component                          | Purpose                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------- |
-| `deploy.sh`                        | Idempotent pipeline: fetch umstutorial → `npm ci` (only if lockfile moved) → sync umsme → sync gdrive → build → rsync `dist/` to webroot. Skips build+rsync when nothing changed. |
-| `umstutorial-deploy.service`      | Oneshot systemd unit that runs `deploy.sh` as the deploy user.                              |
-| `umstutorial-deploy.timer`        | Fires `OnCalendar=hourly` with `Persistent=true` so a missed run catches up after reboot.   |
-| `bootstrap.sh`                     | One-time setup: installs the units, enables the timer, triggers a first deploy.             |
+| File                         | Purpose                                                                                   |
+| ---------------------------- | ----------------------------------------------------------------------------------------- |
+| `umstutorial-deploy.sh`      | Host runner. Starts the container, checks the result, rsyncs to the webroot. Idempotent; single-flight via `flock`. |
+| `umstutorial-deploy.service` | Oneshot unit that runs the installed copy as root, with the site's `REPO_URL`/`BRANCH`/`WEBROOT`. |
+| `umstutorial-deploy.timer`   | `OnCalendar=hourly`, `Persistent=true` so a missed run catches up after reboot.           |
+| `install.sh`                 | Copies the three files above into place, pulls the image, enables the timer, runs once.   |
 
-Default paths (override with env vars when calling `bootstrap.sh` / `deploy.sh`):
+Defaults (override via `Environment=` lines in the installed unit):
 
-- Clone:   `/srv/umstutorial`
-- Webroot: `/var/www/tutorial.uppsalamakerspace.se`
+- Repo: `https://github.com/uppsala-makerspace/umstutorial.git`, branch `main`
+- Webroot: `/var/www/tutorial.uppsalamakerspace.se` (owner preserved; files `0644`, dirs `0755`)
+- State: `/var/lib/umstutorial` (staging/scratch dirs during a run, `last-deployed-sha` after)
+- Image: `node:22-bookworm`; limits 2 GB RAM, 2 CPUs, 512 pids, 15 min
 
-## One-time setup on a fresh server
+## One-time setup on a server
 
-Prerequisites: `git`, `node` ≥ 18, `npm`, `rsync`, `systemd`. The deploy user must own both the clone and the webroot.
+Prerequisites: `docker` (daemon running), `rsync`, `systemd`, `git` (for the checkout
+below only). No node on the host.
 
 ```sh
-# 1. Create a low-privilege deploy user (skip if you already have one).
-sudo useradd -r -m -d /srv/umstutorial -s /usr/sbin/nologin deploy
+# 1. Get the deploy files. Any checkout works; this one can be deleted afterwards.
+git clone --depth 1 https://github.com/uppsala-makerspace/umstutorial.git /root/umstutorial-src
 
-# 2. Clone the repo into /srv/umstutorial (as the deploy user, via HTTPS so
-#    no SSH key is needed).
-sudo -u deploy git clone https://github.com/uppsala-makerspace/umstutorial.git /srv/umstutorial
-
-# 3. Run the bootstrap. This installs the systemd units, enables the timer,
-#    and kicks off a first deploy synchronously so failures surface here.
-cd /srv/umstutorial
-sudo DEPLOY_USER=deploy ./deploy/bootstrap.sh
+# 2. Install. Copies the runner + units, pulls the image, enables the timer and
+#    runs a first deploy synchronously so problems surface here.
+sudo /root/umstutorial-src/deploy/install.sh
 ```
 
-The first deploy populates `/var/www/tutorial.uppsalamakerspace.se`. Point your existing nginx vhost at that directory if it isn't already.
+Point the nginx vhost at the webroot if it isn't already. Nothing under
+`/root/umstutorial-src` is referenced after this.
 
-## Node and the deploy user
+## Migrating from the old setup (deploy user + checkout in /srv)
 
-`bootstrap.sh` probes two things separately:
+```sh
+sudo systemctl disable --now umstutorial-deploy.timer
+sudo /root/umstutorial-src/deploy/install.sh      # overwrites the units, re-enables the timer
+sudo rm -rf /srv/umstutorial                       # old checkout; nothing uses it now
+sudo userdel -r deploy                             # optional — the deploy user is no longer needed
+```
 
-- **login shell** — what `sudo -iu deploy` sees. Sources `.bashrc`/`.profile`, so any `nvm` initialisation there runs.
-- **service env** — the bare environment `systemd` will give the unit: a clean `PATH`, no shell init, no nvm.
+The webroot is left alone; the first run of the new runner rsyncs over it.
 
-The systemd timer fails if the *service env* probe finds no `node` (or one older than 18), even if the login shell looks fine. This is the most common nvm trap: `node` lives under `~/.nvm/versions/node/v…/bin`, which only ends up on `PATH` when a shell init script runs.
+## Updating the deploy files
 
-Three fixes, in order of preference:
+```sh
+git -C /root/umstutorial-src pull      # or a fresh clone
+sudo /root/umstutorial-src/deploy/install.sh
+```
 
-1. **Install node ≥ 18 system-wide** (recommended). Puts `node` in `/usr/bin` or `/usr/local/bin`, which is on the service PATH out of the box. On Debian/Ubuntu:
-
-   ```sh
-   curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-   sudo apt-get install -y nodejs
-   ```
-
-   If the install fails with a `dpkg` file-conflict on `/usr/include/node/common.gypi` (or similar), purge Ubuntu's split `libnode-dev` / `libnode*` packages first — NodeSource's `nodejs` deb is self-contained and collides with them:
-
-   ```sh
-   sudo apt-get purge -y libnode-dev 'libnode[0-9]*'
-   sudo apt-get autoremove -y
-   sudo apt-get install -y nodejs
-   ```
-
-   Then re-run `sudo DEPLOY_USER=deploy ./deploy/bootstrap.sh`.
-
-2. **Use nvm under the deploy user** and point the service at the nvm bin directory. After installing nvm + node 22 as the deploy user, edit `/etc/systemd/system/umstutorial-deploy.service` and change the `Environment=PATH=…` line to prepend the nvm bin path:
-
-   ```ini
-   Environment=PATH=/home/deploy/.nvm/versions/node/v22.21.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-   ```
-
-   Then `sudo systemctl daemon-reload && sudo systemctl start umstutorial-deploy.service`. The version directory will change when you bump node, so prefer fix 1 if you can.
-
-3. **Symlink the root-installed nvm node into a system path.** Quick and dirty; brittle when node is upgraded. Only as a stopgap:
-
-   ```sh
-   sudo ln -sf "$(readlink -f /root/.nvm/versions/node/v22.21.0/bin/node)" /usr/local/bin/node
-   sudo ln -sf "$(readlink -f /root/.nvm/versions/node/v22.21.0/bin/npm)"  /usr/local/bin/npm
-   ```
+Site content and code changes need none of this — the hourly timer builds whatever
+is on `main`. Only `deploy/*` needs the manual step. Every few months, also
+`docker pull node:22-bookworm` to pick up base-image fixes (the runner only pulls when
+the image is missing).
 
 ## Operator commands
 
 ```sh
 systemctl status umstutorial-deploy.timer         # next run + last result
-journalctl -u umstutorial-deploy.service -n 50    # recent deploy logs
+journalctl -u umstutorial-deploy.service -n 50    # recent deploy log
 journalctl -fu umstutorial-deploy.service         # follow live
 sudo systemctl start umstutorial-deploy.service   # force a deploy now
+cat /var/lib/umstutorial/last-deployed-sha        # what's live
 ```
 
-A run that found no changes logs one line (`no changes (umstutorial=…, umsme=…, gdrive=…)`); a real deploy logs `deployed umstutorial=… umsme=… gdrive=…`. Everything from the build pipeline goes to the journal.
+A run ends with `= deployed umstutorial=<sha>`. Everything the container prints
+(clone, npm, sync, build) goes to the journal too. If the build fails, the webroot is
+not touched.
 
-## Upgrading
+## Trying the runner locally
 
-To pull in changes to the deploy artifacts themselves (this directory):
+The runner is plain bash and only needs docker; you can dry-run it against a scratch
+webroot without root (the container user then has to be your own uid):
 
 ```sh
-sudo -u deploy git -C /srv/umstutorial pull
-sudo ./deploy/bootstrap.sh    # re-runs systemd install + daemon-reload
+mkdir -p /tmp/dt/state /tmp/dt/webroot
+STATE_DIR=/tmp/dt/state LOCK=/tmp/dt/lock WEBROOT=/tmp/dt/webroot BUILD_UID=$(id -u) \
+  deploy/umstutorial-deploy.sh
 ```
-
-Day-to-day code changes don't need this — the hourly timer picks them up automatically.
 
 ## Removing
 
 ```sh
 sudo systemctl disable --now umstutorial-deploy.timer
-sudo rm /etc/systemd/system/umstutorial-deploy.{service,timer}
+sudo rm /etc/systemd/system/umstutorial-deploy.{service,timer} /usr/local/sbin/umstutorial-deploy.sh
 sudo systemctl daemon-reload
+sudo rm -rf /var/lib/umstutorial
 ```
 
-The clone and webroot stay; remove them by hand if you also want those gone.
+The webroot stays; remove it by hand if you also want that gone.
 
 ## Adapting for other repos
 
-Copy `deploy/` to a sibling repo and change three values:
+Copy `deploy/` to a sibling repo and change:
 
-1. The clone path and webroot in `deploy.sh` (`CLONE`, `WEBROOT` defaults).
-2. The sync command line — replace `scripts/sync-umsme.sh --https` with whatever pulls that repo's inputs (delete it if there are none).
-3. The service / timer names (rename `umstutorial-deploy` throughout).
+1. `REPO_URL` / `WEBROOT` defaults in `umstutorial-deploy.sh` and the `Environment=`
+   lines in the service.
+2. The `BUILD_SCRIPT` heredoc in the runner if that repo's build steps differ
+   (it assumes `npm ci && npm run sync && npm run build` producing `dist/`).
+3. The unit/runner names (`umstutorial-deploy` throughout).
