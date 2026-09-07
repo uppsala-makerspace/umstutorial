@@ -5,18 +5,19 @@
 # owner of every path it touches — and no approval at all for paths that have
 # no owner.
 #
-# Everything is owned by the maintainer, except tutorials.data.yaml, which is
-# deliberately left unowned. That file is pure content data (tag labels and
+# Everything is owned by the maintainers team, except tutorials.data.yaml,
+# which is deliberately left unowned. That file is pure content data (tag labels and
 # the tutorial list), strictly validated by scripts/data-schema.js in the
 # required "Check build" status, so a PR touching only that file can be merged
 # by its author as soon as CI is green. A PR touching anything else — code,
-# workflows, this file, deploy/ — needs the maintainer's review.
+# workflows, this file, deploy/ — needs a review from a team member. The team
+# must have Write access to the repository for GitHub to honour it here.
 #
 # No bot account or token is involved: the carve-out is entirely this file
 # plus the branch protection settings (see README.md → "Content data").
 
-# Default: everything requires the maintainer's review.
-*                       @matthiaspalmer
+# Default: everything requires a maintainers-team review.
+*                       @uppsala-makerspace/maintainers
 
 # Content data: unowned on purpose. A later pattern with no owner overrides
 # the default above for this path.

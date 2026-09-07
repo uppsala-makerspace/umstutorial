@@ -280,7 +280,8 @@ tutorials:
     trumslip: {docs: {sv: 1DWbM3UpMNX9zHnlnkc41-tg75ep3nHb5NqU42xRA_xk}}
     svarv: {docs: {sv: 1xoyZ1sTCcVq-5w3SE9bZ1awssWszyOEIMX4l-TTP9YY}}
 
-# Add more tutorials to ceramics here, don't forget to make sure the drive document is shared publically
+
   ceramics:
     default_source: gdrive
+    # Add more tutorials here; make sure the Drive document is shared publicly.
     kavelbordet: {docs: {sv: 12OBqMS-eQ8Vwsf8xebG_GoO4FhXucaGXQMP974NAT7U}}
