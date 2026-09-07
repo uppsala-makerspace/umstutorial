@@ -52,4 +52,10 @@ To keep an author-internal "Version history" section out of the published page:
 
 ## How it shows up on the site
 
-After your doc is in `tutorials.config.js`, run `npm run sync:gdrive` to pull the latest version, then `npm run build` to regenerate the site. The synced markdown lives at `sources/gdrive/tutorial/<lang>/<slug>.md` if you want to see exactly what was extracted from your doc.
+Add an entry to `tutorials` in [`tutorials.data.yaml`](tutorials.data.yaml) with your doc's ID:
+
+```yaml
+- {source: gdrive, slug: <slug>, tag: <tag>, docs: {sv: <GoogleDocId>}}
+```
+
+`docs` may carry `sv`, `en`, or both; `slug` is letters, digits and `-`. A pull request that touches only `tutorials.data.yaml` needs no code review — you can merge it yourself once the "Check build" status is green (it validates the file, run `node scripts/validate-data.js` locally to check first). Then run `npm run sync:gdrive` to pull the latest version and `npm run build` to regenerate the site. The synced markdown lives at `sources/gdrive/tutorial/<lang>/<slug>.md` if you want to see exactly what was extracted from your doc.

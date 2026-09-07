@@ -12,6 +12,7 @@
     "dev": "npm run sync && npm run build && npm run serve"
   },
   "dependencies": {
+    "js-yaml": "^5.2.1",
     "markdown-it": "^14.1.0",
     "turndown": "^7.2.4"
   }

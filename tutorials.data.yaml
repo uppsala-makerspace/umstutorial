@@ -1,0 +1,169 @@
+# Tutorial content data — safe to edit without touching code.
+#
+# This file holds only DATA: the tag labels and the ordered list of tutorials.
+# It is read by tutorials.config.js. A pull request that changes ONLY this file
+# needs no code review: the file is unowned in .github/CODEOWNERS, so it can be
+# merged by its author once the "Check build" status is green. Every other file
+# still requires a reviewed pull request.
+#
+# Because it skips review, the file is validated strictly (scripts/data-schema.js)
+# before the build or any sync script uses it. The rules, in short:
+#
+#   slug   letters, digits and "-" only; unique across the file
+#   tag    must exist under tags: below
+#   repo   https://github.com/<owner>/<repo>[.git] — nothing else (no ssh,
+#          no other hosts, no git options)
+#   ref    plain branch/tag/SHA characters, may not start with "-"
+#   dir    relative path inside the repo, no ".." segments
+#   files  bare *.md filenames, keyed by en / sv
+#   docs   Google Doc ids, keyed by en / sv
+#
+# Unknown fields are rejected. Run `node scripts/validate-data.js` locally to
+# check before pushing.
+#
+# TAGS: tag slug -> display label per language (en / sv). Every tutorial's `tag`
+# must exist here.
+tags:
+  "3D":         {en: 3D Workshop, sv: 3D-verkstad}
+  app:          {en: Member app, sv: Medlemsapp}
+  courses:      {en: Courses, sv: Kurser}
+  electronics:  {en: Electronics workshop, sv: Elektronikverkstad}
+  misc:         {en: Miscellaneous, sv: Diverse}
+  vinylcutter:  {en: Vinyl cutter, sv: Vinylskärare}
+  wood:         {en: Wood workshop, sv: Träverkstad}
+
+# TUTORIALS: ordered list; each entry is grouped under `tag` and pulls its
+# markdown from the given source. Required fields: source, slug, tag.
+#
+#   umsme   entry needs only source/slug/tag (content lives in the umsme repo).
+#   gdrive  entry adds  docs: {sv: <GoogleDocId>, en: <GoogleDocId>}  (one or both).
+#   github  entry adds  repo: https://github.com/<owner>/<repo>.git  and optionally:
+#             dir:   subdirectory within the repo (default repo root)
+#             ref:   branch/tag/SHA      (default the remote's HEAD)
+#             files: {sv: <main.md>, en: <main.md>}  (default {sv: README.md})
+#
+# Sections are sorted by tag; the order within a tag is the order tutorials
+# appear in that tag's listing.
+tutorials:
+
+  #===========================================================================
+  # 3D workshop
+  #===========================================================================
+  - {source: gdrive, slug: co2-laser, tag: "3D", docs: {sv: 1Rys1KglTHSOFX4FKyP0mjbPVi05lBwM4otG0yGBpiM8}}
+  - {source: github, slug: prusa-install, tag: "3D", repo: https://github.com/uppsala-makerspace/3d_skrivningskurs.git, dir: docs/chapters/0_install_and_setup_prusa_slicer, files: {en: generated_en.md, sv: generated_sv.md}}
+  - {source: github, slug: prusa-print, tag: "3D", repo: https://github.com/uppsala-makerspace/3d_skrivningskurs.git, dir: docs/chapters/1_print, files: {en: generated_en.md, sv: generated_sv.md}}
+
+  #===========================================================================
+  # Member app
+  #===========================================================================
+  - {source: umsme, slug: installApp, tag: app}
+  - {source: umsme, slug: existingMembers, tag: app}
+  - {source: umsme, slug: newMembers, tag: app}
+  - {source: umsme, slug: renewMembership, tag: app}
+  - {source: umsme, slug: manageFamily, tag: app}
+
+  #===========================================================================
+  # Saturday courses
+  #===========================================================================
+  # The courses
+  - {source: github, slug: loerdagskurser-overview, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/kurserna, files: {en: generated_en.md, sv: generated_sv.md}}
+  # 3D printing
+  - {source: github, slug: about-3d-printing-course, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/kurserna, files: {en: om_3d_skrivningskursen_generated_en.md, sv: om_3d_skrivningskursen_generated_sv.md}}
+  # Arduino
+  - {source: github, slug: about-arduino-course, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/kurserna, files: {en: om_arduinokursen_generated_en.md, sv: om_arduinokursen_generated_sv.md}}
+  # Blender
+  - {source: github, slug: about-blender-course, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/kurserna, files: {en: om_blenderkursen_generated_en.md, sv: om_blenderkursen_generated_sv.md}}
+  # Cooking
+  - {source: github, slug: about-cooking-course, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/kurserna, files: {en: om_matlagningskursen_generated_en.md, sv: om_matlagningskursen_generated_sv.md}}
+  # git
+  - {source: github, slug: about-git-course, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/kurserna, files: {en: om_gitkursen_generated_en.md, sv: om_gitkursen_generated_sv.md}}
+  # Laser cutter
+  - {source: github, slug: about-laser-cutter-course, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/kurserna, files: {en: om_laserskaerarekursen_generated_en.md, sv: om_laserskaerarekursen_generated_sv.md}}
+  # OpenSCAD
+  - {source: github, slug: about-openscad-course, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/kurserna, files: {en: om_openscad_kursen_generated_en.md, sv: om_openscad_kursen_generated_sv.md}}
+  # Programming
+  - {source: github, slug: about-programming-course, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/kurserna, files: {en: om_programmeringskursen_generated_en.md, sv: om_programmeringskursen_generated_sv.md}}
+  # Soldering
+  - {source: github, slug: about-soldering-course, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/kurserna, files: {en: om_loedningskursen_generated_en.md, sv: om_loedningskursen_generated_sv.md}}
+  # Vinyl cutter
+  - {source: github, slug: about-vinyl-cutter-course, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/kurserna, files: {en: om_vinylskaerarekursen_generated_en.md, sv: om_vinylskaerarekursen_generated_sv.md}}
+  # The volunteers
+  # General
+  - {source: github, slug: loerdagskurser-volunteers, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/volontaerer, files: {en: readme_generated_en.md, sv: readme_generated_sv.md}}
+  # Host
+  - {source: github, slug: loerdagskurser-become-host, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/volontaerer, files: {en: bli_entreevaerd_generated_en.md, sv: bli_entreevaerd_generated_sv.md}}
+  # Course leader
+  - {source: github, slug: loerdagskurser-become-course-leader, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/volontaerer, files: {en: bli_kursledare_generated_en.md, sv: bli_kursledare_generated_sv.md}}
+  # Course teacher
+  - {source: github, slug: loerdagskurser-become-teacher, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/volontaerer, files: {en: bli_laerare_generated_en.md, sv: bli_laerare_generated_sv.md}}
+  # Course coordinator
+  - {source: github, slug: loerdagskurser-become-coordinator, tag: courses, repo: https://github.com/uppsala-makerspace/loerdagskurser.git, dir: docs/volontaerer, files: {en: bli_samordnare_generated_en.md, sv: bli_samordnare_generated_sv.md}}
+
+  #===========================================================================
+  # Electronics workshop
+  #===========================================================================
+  # Arduino
+  - {source: github, slug: arduino-install, tag: electronics, repo: https://github.com/richelbilderbeek/arduino_foer_ungdomar.git, dir: docs/kapitel/00_installera_arduino_iden, files: {sv: generated_sv.md}}
+  - {source: github, slug: arduino-first-use, tag: electronics, repo: https://github.com/richelbilderbeek/arduino_foer_ungdomar.git, dir: docs/kapitel/01_anvaendning_av_den_inbyggda_lysdioden, files: {sv: generated_sv.md}}
+  # Music installation
+  - {source: github, slug: start-music, tag: electronics, repo: https://github.com/uppsala-makerspace/loedningskurs.git, dir: docs/chapters/0_setup_music, files: {sv: generated_sv.md}}
+  # Soldering
+  - {source: github, slug: start-soldering, tag: electronics, repo: https://github.com/uppsala-makerspace/loedningskurs.git, dir: docs/chapters/0_setup, files: {sv: generated_sv.md}}
+  - {source: github, slug: your-first-soldering, tag: electronics, repo: https://github.com/uppsala-makerspace/loedningskurs.git, dir: docs/chapters/1_first_solder, files: {sv: generated_sv.md}}
+  # Spot welder
+  - {source: gdrive, slug: punktsvets, tag: electronics, docs: {sv: 1GmmMhldnfo36J7JAJD0tFhjkG2T_MtZHYNRyHuAf8bs}}
+
+  #===========================================================================
+  # Misc
+  #===========================================================================
+  # Connect to local file server
+  - {source: github, slug: connect-to-ums-file-server, tag: misc, repo: https://github.com/uppsala-makerspace/umstutorials.git, dir: connect_to_local_file_server, files: {en: connect_to_local_file_server_en.md, sv: connect_to_local_file_server_sv.md}}
+
+  #===========================================================================
+  # Vinyl cutter
+  #===========================================================================
+  # Procedure
+  - {source: github, slug: print-t-shirt-procedure, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps, files: {en: procedure_generated_en.md}}
+  # 0. Check if Inkcut is already installed
+  - {source: github, slug: check-inkcut-installed, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps, files: {en: 0_check_generated_en.md}}
+  # 1. Install Inkcut
+  - {source: github, slug: install-inkcut, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps/1_install_inkcut, files: {en: generated_en.md}}
+  # 2. Setup Inkcut
+  - {source: github, slug: setup-inkcut, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps, files: {en: 2_setup_inkcut_generated_en.md}}
+  # 3. Get T-shirts
+  - {source: github, slug: get-t-shirts, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps, files: {en: 3_get_t_shirts_generated_en.md}}
+  # 4. Get vinyl
+  - {source: github, slug: get-vinyl, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps, files: {en: 4_get_vinyl_generated_en.md}}
+  # 5. Connect vinyl cutter
+  - {source: github, slug: connect-vinyl-cutter, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps, files: {en: 5_connect_vinyl_cutter_generated_en.md}}
+  # 6. Setup the vinyl cutter
+  - {source: github, slug: setup-vinyl-cutter, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps, files: {en: 6_setup_vinyl_cutter_generated_en.md}}
+  # 7. Place foil
+  - {source: github, slug: place-foil, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps, files: {en: 7_place_foil_generated_en.md}}
+  # 8. Setup Inkcut connection
+  - {source: github, slug: setup-inkcut-connection, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps, files: {en: 8_setup_inkcut_connection_generated_en.md}}
+  # 9. Use Inkcut
+  - {source: github, slug: use-inkcut, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps, files: {en: 9_use_inkcut_generated_en.md}}
+  # 10. Setup the heat press
+  - {source: github, slug: setup-heat-press, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps, files: {en: 10_setup_heat_press_generated_en.md}}
+  # 11. Peel vinyl
+  - {source: github, slug: peel-vinyl, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps, files: {en: 11_peel_vinyl_generated_en.md}}
+  # 12. Transfer vinyl to T-shirt
+  - {source: github, slug: transfer-vinyl-to-t-shirt, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps, files: {en: 12_transfer_vinyl_to_t_shirt_generated_en.md}}
+  # How to create an SVG for Inkcut
+  - {source: github, slug: create-svg-for-inkcut, tag: vinylcutter, repo: https://github.com/uppsala-makerspace/vevor_vinyl_cutter_to_t_shirt_manual.git, dir: docs/steps/create_svg, files: {en: generated_en.md}}
+
+  #===========================================================================
+  # Wood workshop
+  #===========================================================================
+  - {source: gdrive, slug: bordsfras, tag: wood, docs: {sv: 1ZKIZjf7V9i8bYpIoVCvN7bWZWBTNNh3uSqt3Y2GoHdw}}
+  - {source: gdrive, slug: bandslipen, tag: wood, docs: {sv: 1iaDMeP2SLS92Z3N5Bexv51c_tZeQYJwaSVquJPmFxvY}}
+  - {source: gdrive, slug: bordssag, tag: wood, docs: {sv: 1tl-2MF4t7SjDfPqiCY4RUoeawATpwx_Nu7nJAMGkodA}}
+  - {source: gdrive, slug: bandssag-liten, tag: wood, docs: {sv: 1l9_gzDCnJWv599O2cOS3L0Om5aXipxYNI9xdnBqv-ww}}
+  - {source: gdrive, slug: bandssag-stor, tag: wood, docs: {sv: 1m8AyFN5he_tnVZrfX3Vr3gfaZcIx9XbUizodK6NT1bg}}
+  - {source: gdrive, slug: bordssag-liten, tag: wood, docs: {sv: 1rko_Itm3ctTaY380f2kkIQU-rDqZ4IIdgO2qA2Zl-lM}}
+  - {source: gdrive, slug: kap-och-gersag, tag: wood, docs: {sv: 1IKfLPYiFgGwTZGgOBVXARnNbYc88R_-VMWXMeQpqEe8}}
+  - {source: gdrive, slug: figursag, tag: wood, docs: {sv: 1tngfynJiae7yydLWVCVApQBAfY807-RSBb34gSADN9U}}
+  - {source: gdrive, slug: pelarborr, tag: wood, docs: {sv: 1ravwP4H55TGArYpeTDqDQv6elldbfn6nPcRVQm_yCC0}}
+  - {source: gdrive, slug: trumslip, tag: wood, docs: {sv: 1DWbM3UpMNX9zHnlnkc41-tg75ep3nHb5NqU42xRA_xk}}
+  - {source: gdrive, slug: svarv, tag: wood, docs: {sv: 1xoyZ1sTCcVq-5w3SE9bZ1awssWszyOEIMX4l-TTP9YY}}

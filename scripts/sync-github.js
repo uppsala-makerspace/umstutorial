@@ -16,19 +16,24 @@
 // build.js's image rule rewrites into dist/screens/github/ (build.js:90-97).
 //
 // `sources/github/.synced-sha` records the checked-out commit SHA per
-// `<repo>@<ref>`, so build.js's requireSyncedSha gate is satisfied and
-// deploy.sh can detect changes. Re-running wipes and rebuilds sources/github/
-// to stay hermetic. Requires the system `git` binary.
+// `<repo>@<ref>`, so build.js's requireSyncedSha gate is satisfied. Re-running
+// wipes and rebuilds sources/github/ to stay hermetic. Requires the system
+// `git` binary.
 //
 // Limitations: only inline markdown images `![alt](path)` and HTML `<img src>`
 // are rewritten (not reference-style images). Remote/absolute image URLs are
 // left untouched — they are not downloaded.
+//
+// Trust: every field above comes from tutorials.data.yaml, which merges
+// without code review. scripts/data-schema.js whitelists their shapes before
+// this script runs; the `--` separators and GIT_ENV below are a second layer
+// so a schema gap can't turn into a git option or an `ext::` transport.
 
 import {
   copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
@@ -58,6 +63,20 @@ if (entries.length === 0) {
   console.log("github: no entries in TUTORIALS — wrote empty .synced-sha");
   process.exit(0);
 }
+
+// Defence in depth behind data-schema.js's https://github.com/ whitelist: even
+// if a non-https URL slipped through, git itself refuses every other transport
+// (`ext::`, `file:`, ssh, …) and never prompts for credentials.
+const GIT_ENV = {
+  ...process.env,
+  GIT_ALLOW_PROTOCOL: "https",
+  GIT_TERMINAL_PROMPT: "0",
+  GIT_CONFIG_COUNT: "2",
+  GIT_CONFIG_KEY_0: "protocol.allow",
+  GIT_CONFIG_VALUE_0: "never",
+  GIT_CONFIG_KEY_1: "protocol.https.allow",
+  GIT_CONFIG_VALUE_1: "always",
+};
 
 const shaMap = {};
 const cloneCache = new Map(); // "<repo>\0<ref>" -> { dir, sha }
@@ -89,7 +108,7 @@ try {
       const tag = `${slug}/${lang}`;
       try {
         const mdPath = resolve(clone.dir, entry.dir || "", file);
-        if (!mdPath.startsWith(clone.dir)) {
+        if (!mdPath.startsWith(clone.dir + sep)) {
           throw new Error(`main file escapes repo: ${file}`);
         }
         if (!existsSync(mdPath)) {
@@ -134,8 +153,9 @@ function getClone(repo, ref) {
   const dir = mkdtempSync(join(tmpdir(), "github-sync-"));
   tmpDirs.push(dir);
   console.log(`→ cloning ${repo}${ref ? ` @ ${ref}` : ""}`);
-  git(["clone", "--filter=blob:none", "--quiet", repo, dir]);
-  if (ref) git(["-C", dir, "checkout", "--quiet", ref]);
+  // `--` keeps a data-file value from ever being parsed as a git option.
+  git(["clone", "--filter=blob:none", "--quiet", "--", repo, dir]);
+  if (ref) git(["-C", dir, "checkout", "--quiet", "--", ref]);
   const sha = git(["-C", dir, "rev-parse", "HEAD"], "utf8").trim();
 
   const result = { dir, sha };
@@ -147,6 +167,7 @@ function git(args, encoding) {
   try {
     return execFileSync("git", args, {
       encoding,
+      env: GIT_ENV,
       stdio: encoding ? ["ignore", "pipe", "pipe"] : ["ignore", "ignore", "pipe"],
     });
   } catch (err) {
@@ -176,7 +197,7 @@ function rewriteImages(md, mdDir, cloneDir, slug) {
     } catch {
       abs = resolve(mdDir, pathOnly);
     }
-    if (!abs.startsWith(cloneDir)) {
+    if (!abs.startsWith(cloneDir + sep)) {
       console.warn(`    ! ${slug}: image escapes repo, left as-is: ${src}`);
       return null;
     }
